@@ -1,8 +1,11 @@
 #include "ECU.hpp"
+#include <iostream>
+#include <atomic>
 using namespace std::literals::chrono_literals;
 
 
 constexpr uint32_t ECU_CAN_ID = 0x120;
+constexpr uint8_t ECU_DATA_LENGTH = 8;
 
 EngineECU::EngineECU(const std::string& iface, int r, float t, float c) : rpm(r), throttle(t), coolantTemp(c), can_(iface) {}
 
@@ -17,10 +20,11 @@ void EngineECU::encodeMessage() {
    //encode the rpm info, coolant info, and throttle info
    //get the most significant byte and then the next byte
     lastMsg.id = ECU_CAN_ID;
-    lastMsg.length = 8;
+    lastMsg.length = ECU_DATA_LENGTH;
     //filling with all 0s by default
     lastMsg.data.fill(0);
 
+    //big endian for payload
     lastMsg.data[0] = static_cast<uint8_t>((rpm >> 8) & 0xFF);
     lastMsg.data[1] = static_cast<uint8_t>(rpm & 0xFF);
 
@@ -92,3 +96,15 @@ void EngineECU::start(int iterations) {
 }
 
 CANMessage EngineECU::receive() { return can_.receive(); }
+
+void EngineECU::decodeMessage(const CANMessage& message){
+	
+	//rx  id=0x120 len=8 data=13 88 3 E8 23 28 0 0
+	std::cout << "rx\t id=" << std::hex << message.id << " ";
+	std::cout << "len=" << std::dec << static_cast<int>(message.length) << " data=";
+	for(int i = 0; i < message.length; i++){
+		std::cout << std::hex << static_cast<int>(message.data[i]) << " ";
+	}
+	std::cout << "\n";
+}
+
